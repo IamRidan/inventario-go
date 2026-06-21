@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "io.github.iamridan.twa",
+        "package_name": "io.github.iamridan.inventario",
         "sha256_cert_fingerprints": ["28:5A:DF:0B:7A:22:4A:5B:84:4E:63:7D:AC:39:FB:1D:C2:47:63:1A:8F:D0:31:91:8D:D9:59:3D:78:83:4C:83"]
       }
     }]
