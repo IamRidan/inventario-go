@@ -1,6 +1,6 @@
 {
   "licencias": {
-    "GO-DEMO": { "cliente": "Demostracion", "activa": true, "vence": "2025-01-01" },
+    "GO-DEMO": { "cliente": "Demostracion", "activa": true, "vence": "2027-12-31" },
     "GO-0001": { "cliente": "Nombre del cliente", "activa": true, "vence": "2026-07-21" }
   }
 }
