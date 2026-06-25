@@ -3,7 +3,7 @@
    una vez abierta la primera vez con conexión). Sube la versión del CACHE
    cada vez que cambies algún archivo para forzar la actualización. */
 
-const CACHE = 'inventario-go-v1';
+const CACHE = 'inventario-go-v2';
 
 const ASSETS = [
   './',

@@ -203,6 +203,34 @@ small.hint{display:block;color:var(--muted);font-size:12px;margin-top:6px}
 </style>
 </head>
 <body>
+<style>
+#licGate{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+#licGate .card{max-width:420px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:30px 26px;text-align:center;box-shadow:var(--shadow)}
+#licGate .logo{width:64px;height:64px;border-radius:16px;margin:0 auto 16px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1205;font-size:20px}
+#licGate h2{margin:0 0 6px;font-size:20px;color:var(--txt)}
+#licGate p.sub{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.5}
+#licGate input{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel-2);color:var(--txt);font-size:16px;text-align:center;letter-spacing:1px;text-transform:uppercase}
+#licGate button{width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;font-size:16px;font-weight:700;color:#1a1205;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+#licGate .msg{margin-top:14px;font-size:13px;line-height:1.5;min-height:18px}
+#licGate .msg.bad{color:var(--bad)}
+#licGate .msg.ok{color:var(--ok)}
+#licGate .msg.info{color:var(--muted)}
+#licGate .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;margin:8px auto;animation:licspin .8s linear infinite}
+@keyframes licspin{to{transform:rotate(360deg)}}
+</style>
+<div id="licGate">
+  <div class="card">
+    <div class="logo">GO</div>
+    <h2 id="licTitle">Inventario GO</h2>
+    <p class="sub" id="licSub">Ingresa tu clave de licencia para activar la aplicación.</p>
+    <div id="licSpin" class="spin" style="display:none"></div>
+    <div id="licForm">
+      <input id="licInput" type="text" autocomplete="off" placeholder="EJ: GO-0001" />
+      <button id="licBtn">Activar</button>
+    </div>
+    <div id="licMsg" class="msg"></div>
+  </div>
+</div>
 <div class="app">
   <header>
     <div class="brand">
@@ -929,6 +957,77 @@ $('btnResetAll').onclick=()=>{
 /* ============ Init ============ */
 load(); updateStats(); renderList();
 window.addEventListener('beforeunload', ()=>{ try{stopScanner();}catch(e){} });
+</script>
+<script>
+/* ============ Licencia remota ============ */
+(function(){
+  // URL del archivo de licencias en TU GitHub (lo controlas tú).
+  const LIC_URL = 'https://raw.githubusercontent.com/iamridan/inventario-go/main/licencias.json';
+  const GRACE_DAYS = 7;          // días que puede usarse sin internet tras la última validación
+  const LS = 'lic_state';        // {key, vence, cliente, lastCheck}
+
+  const gate  = document.getElementById('licGate');
+  const form  = document.getElementById('licForm');
+  const spin  = document.getElementById('licSpin');
+  const input = document.getElementById('licInput');
+  const btn   = document.getElementById('licBtn');
+  const msg   = document.getElementById('licMsg');
+  const sub   = document.getElementById('licSub');
+
+  const today = () => new Date().toISOString().slice(0,10);
+  const daysBetween = (a,b) => Math.floor((new Date(b)-new Date(a))/86400000);
+  const getState = () => { try{ return JSON.parse(localStorage.getItem(LS)); }catch(e){ return null; } };
+  const setState = s => localStorage.setItem(LS, JSON.stringify(s));
+
+  function setMsg(text, cls){ msg.textContent=text||''; msg.className='msg'+(cls?' '+cls:''); }
+  function loading(on){ spin.style.display=on?'block':'none'; form.style.display=on?'none':'block'; }
+
+  function unlock(){ gate.style.display='none'; }
+  function lock(text, cls, prefill){
+    loading(false);
+    gate.style.display='flex';
+    if(prefill) input.value=prefill;
+    setMsg(text, cls||'bad');
+  }
+
+  async function validate(key){
+    key = (key||'').trim().toUpperCase();
+    if(!key){ setMsg('Ingresa una clave de licencia.','bad'); return; }
+    loading(true); setMsg('Validando licencia…','info');
+
+    let data=null;
+    try{
+      const res = await fetch(LIC_URL+'?t='+Date.now(), {cache:'no-store'});
+      if(res.ok) data = await res.json();
+    }catch(e){ data=null; }
+
+    if(data){
+      const lic = (data.licencias||{})[key];
+      if(!lic){ return lock('Clave de licencia no válida. Verifica e inténtalo de nuevo.','bad',key); }
+      if(lic.activa===false){ return lock('Tu licencia está bloqueada. Contacta al proveedor.','bad',key); }
+      if(lic.vence && today() > lic.vence){ return lock('Tu licencia venció el '+lic.vence+'. Contacta al proveedor para renovar.','bad',key); }
+      setState({key, vence:lic.vence||'', cliente:lic.cliente||'', lastCheck:today()});
+      return unlock();
+    }
+
+    // Sin conexión: usar la última validación guardada (periodo de gracia)
+    const st = getState();
+    if(st && st.key===key){
+      if(st.vence && today() > st.vence) return lock('Tu licencia venció. Conéctate a internet para revalidar.','bad',key);
+      if(daysBetween(st.lastCheck, today()) > GRACE_DAYS) return lock('Necesitas conectarte a internet para validar tu licencia.','bad',key);
+      return unlock(); // dentro de la gracia offline
+    }
+    return lock('No se pudo validar la licencia. Conéctate a internet e inténtalo de nuevo.','bad',key);
+  }
+
+  btn.addEventListener('click', () => validate(input.value));
+  input.addEventListener('keydown', e => { if(e.key==='Enter') validate(input.value); });
+
+  // Al abrir: si ya hay una clave guardada, valida sola; si no, pide la clave.
+  const st = getState();
+  if(st && st.key){ input.value=st.key; validate(st.key); }
+  else { sub.textContent='Ingresa tu clave de licencia para activar la aplicación.'; }
+})();
 </script>
 <script>
 /* Registro del Service Worker (habilita instalación y uso sin internet) */
