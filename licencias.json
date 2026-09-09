@@ -2,6 +2,6 @@
   "licencias": {
     "76932171": { "cliente": "adm", "activa": true, "vence": "2026-09-30" },
     "30092026": { "cliente": "Maruja", "activa": true, "vence": "2026-09-30" }
-    "10092026": { "cliente": "Renzo", "activa": true, "vence": "2026-10-01" }
+    "Joveme26": { "cliente": "Renzo", "activa": true, "vence": "2026-10-01" }
   }
 }
